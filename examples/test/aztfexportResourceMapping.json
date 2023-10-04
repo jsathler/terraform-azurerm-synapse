@@ -1,0 +1,42 @@
+{
+	"/subscriptions/0783ffe8-281d-407a-8b7f-c61da7adb25a/resourceGroups/synapsemanagedvnet-example-rg": {
+		"resource_id": "/subscriptions/0783ffe8-281d-407a-8b7f-c61da7adb25a/resourceGroups/synapsemanagedvnet-example-rg",
+		"resource_type": "azurerm_resource_group",
+		"resource_name": "res-0"
+	},
+	"/subscriptions/0783ffe8-281d-407a-8b7f-c61da7adb25a/resourceGroups/synapsemanagedvnet-example-rg/providers/Microsoft.Storage/storageAccounts/synapseexampleqmwqotst": {
+		"resource_id": "/subscriptions/0783ffe8-281d-407a-8b7f-c61da7adb25a/resourceGroups/synapsemanagedvnet-example-rg/providers/Microsoft.Storage/storageAccounts/synapseexampleqmwqotst",
+		"resource_type": "azurerm_storage_account",
+		"resource_name": "res-1"
+	},
+	"/subscriptions/0783ffe8-281d-407a-8b7f-c61da7adb25a/resourceGroups/synapsemanagedvnet-example-rg/providers/Microsoft.Storage/storageAccounts/synapseexampleqmwqotst/blobServices/default/containers/synapse": {
+		"resource_id": "https://synapseexampleqmwqotst.blob.core.windows.net/synapse",
+		"resource_type": "azurerm_storage_container",
+		"resource_name": "res-3"
+	},
+	"/subscriptions/0783ffe8-281d-407a-8b7f-c61da7adb25a/resourceGroups/synapsemanagedvnet-example-rg/providers/Microsoft.Synapse/workspaces/synapseexampleqmwqot-synw": {
+		"resource_id": "/subscriptions/0783ffe8-281d-407a-8b7f-c61da7adb25a/resourceGroups/synapsemanagedvnet-example-rg/providers/Microsoft.Synapse/workspaces/synapseexampleqmwqot-synw",
+		"resource_type": "azurerm_synapse_workspace",
+		"resource_name": "res-7"
+	},
+	"/subscriptions/0783ffe8-281d-407a-8b7f-c61da7adb25a/resourceGroups/synapsemanagedvnet-example-rg/providers/Microsoft.Synapse/workspaces/synapseexampleqmwqot-synw/extendedAuditingSettings/Default": {
+		"resource_id": "/subscriptions/0783ffe8-281d-407a-8b7f-c61da7adb25a/resourceGroups/synapsemanagedvnet-example-rg/providers/Microsoft.Synapse/workspaces/synapseexampleqmwqot-synw/extendedAuditingSettings/Default",
+		"resource_type": "azurerm_synapse_workspace_extended_auditing_policy",
+		"resource_name": "res-11"
+	},
+	"/subscriptions/0783ffe8-281d-407a-8b7f-c61da7adb25a/resourceGroups/synapsemanagedvnet-example-rg/providers/Microsoft.Synapse/workspaces/synapseexampleqmwqot-synw/integrationruntimes/AutoResolveIntegrationRuntime": {
+		"resource_id": "/subscriptions/0783ffe8-281d-407a-8b7f-c61da7adb25a/resourceGroups/synapsemanagedvnet-example-rg/providers/Microsoft.Synapse/workspaces/synapseexampleqmwqot-synw/integrationRuntimes/AutoResolveIntegrationRuntime",
+		"resource_type": "azurerm_synapse_integration_runtime_azure",
+		"resource_name": "res-12"
+	},
+	"/subscriptions/0783ffe8-281d-407a-8b7f-c61da7adb25a/resourceGroups/synapsemanagedvnet-example-rg/providers/Microsoft.Synapse/workspaces/synapseexampleqmwqot-synw/securityAlertPolicies/Default": {
+		"resource_id": "/subscriptions/0783ffe8-281d-407a-8b7f-c61da7adb25a/resourceGroups/synapsemanagedvnet-example-rg/providers/Microsoft.Synapse/workspaces/synapseexampleqmwqot-synw/securityAlertPolicies/Default",
+		"resource_type": "azurerm_synapse_workspace_security_alert_policy",
+		"resource_name": "res-13"
+	},
+	"/subscriptions/0783ffe8-281d-407a-8b7f-c61da7adb25a/resourceGroups/synapsemanagedvnet-example-rg/providers/Microsoft.Synapse/workspaces/synapseexampleqmwqot-synw/vulnerabilityAssessments/Default": {
+		"resource_id": "/subscriptions/0783ffe8-281d-407a-8b7f-c61da7adb25a/resourceGroups/synapsemanagedvnet-example-rg/providers/Microsoft.Synapse/workspaces/synapseexampleqmwqot-synw/vulnerabilityAssessments/Default",
+		"resource_type": "azurerm_synapse_workspace_vulnerability_assessment",
+		"resource_name": "res-14"
+	}
+}

@@ -1,0 +1,9 @@
+Following resources are marked to be skipped:
+
+- /subscriptions/0783ffe8-281d-407a-8b7f-c61da7adb25a/resourceGroups/synapsemanagedvnet-example-rg/providers/Microsoft.Storage/storageAccounts/synapseexampleqmwqotst/blobServices/default
+- /subscriptions/0783ffe8-281d-407a-8b7f-c61da7adb25a/resourceGroups/synapsemanagedvnet-example-rg/providers/Microsoft.Storage/storageAccounts/synapseexampleqmwqotst/fileServices/default
+- /subscriptions/0783ffe8-281d-407a-8b7f-c61da7adb25a/resourceGroups/synapsemanagedvnet-example-rg/providers/Microsoft.Storage/storageAccounts/synapseexampleqmwqotst/queueServices/default
+- /subscriptions/0783ffe8-281d-407a-8b7f-c61da7adb25a/resourceGroups/synapsemanagedvnet-example-rg/providers/Microsoft.Storage/storageAccounts/synapseexampleqmwqotst/tableServices/default
+- /subscriptions/0783ffe8-281d-407a-8b7f-c61da7adb25a/resourceGroups/synapsemanagedvnet-example-rg/providers/Microsoft.Synapse/workspaces/synapseexampleqmwqot-synw/auditingSettings/Default
+- /subscriptions/0783ffe8-281d-407a-8b7f-c61da7adb25a/resourceGroups/synapsemanagedvnet-example-rg/providers/Microsoft.Synapse/workspaces/synapseexampleqmwqot-synw/azureADOnlyAuthentications/default
+- /subscriptions/0783ffe8-281d-407a-8b7f-c61da7adb25a/resourceGroups/synapsemanagedvnet-example-rg/providers/Microsoft.Synapse/workspaces/synapseexampleqmwqot-synw/dedicatedSQLminimalTlsSettings/default
