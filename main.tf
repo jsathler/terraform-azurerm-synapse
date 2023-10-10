@@ -2,11 +2,17 @@ locals {
   tags = merge(var.tags, { ManagedByTerraform = "True" })
 }
 
+resource "azurerm_storage_data_lake_gen2_filesystem" "default" {
+  count              = var.workspace.storage_data_lake_gen2_id != null && var.workspace.storage_data_lake_gen2_container_name != null ? 1 : 0
+  name               = var.workspace.storage_data_lake_gen2_container_name
+  storage_account_id = var.workspace.storage_data_lake_gen2_id
+}
+
 resource "azurerm_synapse_workspace" "default" {
   name                                 = "${var.workspace.name}-synw"
   resource_group_name                  = var.resource_group_name
   location                             = var.location
-  storage_data_lake_gen2_filesystem_id = var.workspace.storage_data_lake_gen2_filesystem_id
+  storage_data_lake_gen2_filesystem_id = var.workspace.storage_data_lake_gen2_filesystem_id != null ? var.workspace.storage_data_lake_gen2_filesystem_id : azurerm_storage_data_lake_gen2_filesystem.default[0].id
 
   sql_administrator_login              = var.workspace.sql_administrator_login
   sql_administrator_login_password     = var.workspace.sql_administrator_login_password
@@ -80,45 +86,46 @@ resource "azurerm_synapse_workspace" "default" {
   }
 }
 
-resource "azurerm_synapse_firewall_rule" "allow_azure_services" {
-  count                = var.workspace.allow_azure_services && var.workspace.public_network_access_enabled ? 1 : 0
-  name                 = "AllowAllWindowsAzureIps"
-  synapse_workspace_id = azurerm_synapse_workspace.default.id
-  start_ip_address     = "0.0.0.0"
-  end_ip_address       = "0.0.0.0"
+locals {
+  firewall_rules = var.workspace.allow_azure_services && var.workspace.public_network_access_enabled ? merge(var.workspace.firewall_rules,
+  { AllowAllWindowsAzureIps = { start_ip_address = "0.0.0.0", end_ip_address = "0.0.0.0" } }) : var.workspace.firewall_rules
 }
 
 resource "azurerm_synapse_firewall_rule" "default" {
-  for_each             = { for key, value in var.firewall_rules : key => value }
-  name                 = "${each.key}-syfw"
+  for_each             = local.firewall_rules == null ? {} : { for key, value in local.firewall_rules : key => value if var.workspace.public_network_access_enabled }
+  name                 = each.key == "AllowAllWindowsAzureIps" ? each.key : "${each.key}-syfw"
   synapse_workspace_id = azurerm_synapse_workspace.default.id
   start_ip_address     = each.value.start_ip_address
   end_ip_address       = each.value.end_ip_address
 }
 
-# resource "azurerm_role_assignment" "default" {
-#   scope                = azurerm_storage_account.default.id
-#   role_definition_name = "Storage Blob Data Contributor"
-#   principal_id         = azurerm_synapse_workspace.default.id
-# }
+# "Reader" on Storage account and "Storage Blob Data Owner" on container is an alternative
+resource "azurerm_role_assignment" "default" {
+  count                = var.workspace.storage_data_lake_gen2_id != null && var.workspace.storage_data_lake_gen2_container_name != null ? 1 : 0
+  scope                = var.workspace.storage_data_lake_gen2_id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azurerm_synapse_workspace.default.identity[0].principal_id
+}
 
 #Synapse Access Control
 locals {
-  access_control = flatten([for key, value in var.access_control : [
+  access_control = flatten([for key, value in var.workspace.access_control : [
     for principal_id in value : {
       role_name    = key
       principal_id = principal_id
     }
-  ]])
+  ] if var.workspace.access_control != null])
 }
 
 resource "azurerm_synapse_role_assignment" "roles" {
+  depends_on           = [azurerm_synapse_firewall_rule.default]
   for_each             = { for key, value in local.access_control : "${value.role_name}-${value.principal_id}" => value }
   synapse_workspace_id = azurerm_synapse_workspace.default.id
   role_name            = each.value.role_name
   principal_id         = each.value.principal_id
 }
 
+#Azure AD only
 resource "azapi_update_resource" "synapse_azuread_only_authentication" {
   type      = "Microsoft.Synapse/workspaces/azureADOnlyAuthentications@2021-06-01"
   name      = "default"
@@ -156,3 +163,79 @@ resource "azapi_update_resource" "synapse_azuread_only_authentication" {
 #     }
 #   })
 # }
+
+#Integration Runtime
+resource "azurerm_synapse_integration_runtime_self_hosted" "default" {
+  for_each             = { for key, value in var.irs : key => value if value.type == "Self-hosted" }
+  name                 = "${each.key}-synirsh"
+  description          = each.value.description
+  synapse_workspace_id = azurerm_synapse_workspace.default.id
+}
+
+resource "azurerm_synapse_integration_runtime_azure" "default" {
+  for_each             = { for key, value in var.irs : key => value if value.type == "Azure" }
+  name                 = "${each.key}-synira"
+  description          = each.value.description
+  synapse_workspace_id = azurerm_synapse_workspace.default.id
+  location             = each.value.location
+  compute_type         = each.value.compute_type
+  core_count           = each.value.core_count
+  time_to_live_min     = each.value.time_to_live_min
+}
+
+# Pools
+resource "azurerm_synapse_sql_pool" "default" {
+  for_each                  = { for key, value in var.sql_pools : key => value }
+  name                      = "${each.key}syndp"
+  synapse_workspace_id      = azurerm_synapse_workspace.default.id
+  sku_name                  = each.value.sku_name
+  create_mode               = each.value.create_mode
+  collation                 = each.value.collation
+  data_encrypted            = each.value.data_encrypted
+  geo_backup_policy_enabled = each.value.geo_backup_policy_enabled
+  storage_account_type      = each.value.geo_backup_policy_enabled ? "GRS" : "LRS"
+  tags                      = merge(local.tags, each.value.tags)
+}
+
+
+/*
+Managed private endpoint
+Unfortunately azurerm_synapse_managed_private_endpoint doesn't have the option to auto approve the private endpoint and it doesn't export the private endpoint name
+We used azapi_resource to retrieve private connections on Storage Account that match with private endpoint name created
+*/
+resource "azurerm_synapse_managed_private_endpoint" "default" {
+  depends_on           = [azurerm_synapse_firewall_rule.default]
+  count                = var.workspace.storage_data_lake_gen2_private_endpoint ? 1 : 0
+  name                 = "${split("/", var.workspace.storage_data_lake_gen2_id)[8]}-synmpe"
+  synapse_workspace_id = azurerm_synapse_workspace.default.id
+  target_resource_id   = var.workspace.storage_data_lake_gen2_id
+  subresource_name     = "blob"
+}
+
+data "azapi_resource" "storage_account_private_endpoint_approval" {
+  depends_on             = [azurerm_synapse_managed_private_endpoint.default]
+  resource_id            = var.workspace.storage_data_lake_gen2_id
+  type                   = "Microsoft.Storage/storageAccounts@2022-09-01"
+  response_export_values = ["properties.privateEndpointConnections"]
+}
+
+locals {
+  private_endpoint_name = [for object in jsondecode(data.azapi_resource.storage_account_private_endpoint_approval.output).properties.privateEndpointConnections : object.name if strcontains(object.properties.privateEndpoint.id, "${azurerm_synapse_workspace.default.name}.${split("/", var.workspace.storage_data_lake_gen2_id)[8]}-synmpe")]
+}
+
+resource "azapi_update_resource" "storage_account_private_endpoint_approval" {
+  count     = var.workspace.storage_data_lake_gen2_private_endpoint ? 1 : 0
+  type      = "Microsoft.Storage/storageAccounts/privateEndpointConnections@2022-09-01"
+  name      = local.private_endpoint_name[0]
+  parent_id = var.workspace.storage_data_lake_gen2_id
+
+  body = jsonencode({
+    properties = {
+      privateEndpoint = {}
+      privateLinkServiceConnectionState = {
+        description = "Synapse Managed Endpoint"
+        status      = "Approved"
+      }
+    }
+  })
+}
