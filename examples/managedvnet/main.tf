@@ -25,7 +25,7 @@ resource "azurerm_storage_account" "default" {
   is_hns_enabled           = true
 }
 
-# resource "azurerm_storage_data_lake_gen2_filesystem" "default" {
+# resource "azurerm_storage_account_filesystem" "default" {
 #   name               = "synapse"
 #   storage_account_id = azurerm_storage_account.default.id
 # }
@@ -44,12 +44,13 @@ module "synapse" {
   workspace = {
     name                        = "synapseexample${random_string.default.result}"
     managed_resource_group_name = replace(azurerm_resource_group.default.name, "rg", "mrg")
-    # storage_data_lake_gen2_filesystem_id = azurerm_storage_data_lake_gen2_filesystem.default.id
-    storage_data_lake_gen2_id               = azurerm_storage_account.default.id
-    storage_data_lake_gen2_container_name   = "synapse"
-    azuread_only_authentication             = true
-    allow_azure_services                    = true
-    storage_data_lake_gen2_private_endpoint = true
+    # storage_account_filesystem_id = azurerm_storage_account_filesystem.default.id
+    storage_account_id               = azurerm_storage_account.default.id
+    storage_account_filesystem_name  = "synapse"
+    storage_account_private_endpoint = true
+    azuread_only_authentication      = true
+    allow_azure_services             = true
+
 
     aad_admin = {
       login     = "Azure AD Admin"

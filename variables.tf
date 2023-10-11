@@ -17,24 +17,24 @@ variable "tags" {
 
 variable "workspace" {
   type = object({
-    name                                    = string
-    storage_data_lake_gen2_filesystem_id    = optional(string, null)
-    storage_data_lake_gen2_id               = optional(string, null)
-    storage_data_lake_gen2_container_name   = optional(string, null)
-    storage_data_lake_gen2_private_endpoint = optional(bool, false)
-    sql_identity_control_enabled            = optional(bool, true)
-    sql_administrator_login                 = optional(string, "sqladminuser")
-    sql_administrator_login_password        = optional(string, null)
-    compute_subnet_id                       = optional(string, null)
-    data_exfiltration_protection_enabled    = optional(bool, true)
-    linking_allowed_for_aad_tenant_ids      = optional(list(string), null)
-    managed_resource_group_name             = optional(string, null)
-    managed_virtual_network_enabled         = optional(bool, true)
-    public_network_access_enabled           = optional(bool, true)
-    purview_id                              = optional(string, null)
-    azuread_only_authentication             = optional(bool, false)
-    trusted_service_bypass_enabled          = optional(bool, true)
-    allow_azure_services                    = optional(bool, false)
+    name                                 = string
+    storage_account_id                   = string
+    storage_account_filesystem_name      = optional(string, null)
+    storage_account_private_endpoint     = optional(bool, false)
+    storage_account_filesystem_id        = optional(string, null)
+    sql_identity_control_enabled         = optional(bool, true)
+    sql_administrator_login              = optional(string, "sqladminuser")
+    sql_administrator_login_password     = optional(string, null)
+    compute_subnet_id                    = optional(string, null)
+    data_exfiltration_protection_enabled = optional(bool, true)
+    linking_allowed_for_aad_tenant_ids   = optional(list(string), null)
+    managed_resource_group_name          = optional(string, null)
+    managed_virtual_network_enabled      = optional(bool, true)
+    public_network_access_enabled        = optional(bool, true)
+    purview_id                           = optional(string, null)
+    azuread_only_authentication          = optional(bool, false)
+    trusted_service_bypass_enabled       = optional(bool, true)
+    allow_azure_services                 = optional(bool, false)
 
     identity = optional(object({
       type         = optional(string, "SystemAssigned")
@@ -86,8 +86,8 @@ variable "workspace" {
   })
 
   validation {
-    condition     = var.workspace.storage_data_lake_gen2_filesystem_id == null ? var.workspace.storage_data_lake_gen2_id != null && var.workspace.storage_data_lake_gen2_container_name != null : true
-    error_message = "If storage_data_lake_gen2_filesystem_id is not set, storage_data_lake_gen2_id and storage_data_lake_gen2_container_name should be defined"
+    condition     = var.workspace.storage_account_filesystem_id == null ? var.workspace.storage_account_id != null && var.workspace.storage_account_filesystem_name != null : true
+    error_message = "If storage_account_filesystem_id is not set, storage_account_id and storage_account_filesystem_name should be defined"
   }
 
   #   validation {

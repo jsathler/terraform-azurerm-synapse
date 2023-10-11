@@ -2,17 +2,24 @@ locals {
   tags = merge(var.tags, { ManagedByTerraform = "True" })
 }
 
+###########
+# Creates data lake file system if an existing filesystem_id is not provided
+###########
 resource "azurerm_storage_data_lake_gen2_filesystem" "default" {
-  count              = var.workspace.storage_data_lake_gen2_id != null && var.workspace.storage_data_lake_gen2_container_name != null ? 1 : 0
-  name               = var.workspace.storage_data_lake_gen2_container_name
-  storage_account_id = var.workspace.storage_data_lake_gen2_id
+  count              = var.workspace.storage_account_filesystem_id == null ? 1 : 0
+  name               = var.workspace.storage_account_filesystem_name
+  storage_account_id = var.workspace.storage_account_id
 }
+
+###########
+# Synapse Workspace
+###########
 
 resource "azurerm_synapse_workspace" "default" {
   name                                 = "${var.workspace.name}-synw"
   resource_group_name                  = var.resource_group_name
   location                             = var.location
-  storage_data_lake_gen2_filesystem_id = var.workspace.storage_data_lake_gen2_filesystem_id != null ? var.workspace.storage_data_lake_gen2_filesystem_id : azurerm_storage_data_lake_gen2_filesystem.default[0].id
+  storage_data_lake_gen2_filesystem_id = var.workspace.storage_account_filesystem_id != null ? var.workspace.storage_account_filesystem_id : azurerm_storage_data_lake_gen2_filesystem.default[0].id
 
   sql_administrator_login              = var.workspace.sql_administrator_login
   sql_administrator_login_password     = var.workspace.sql_administrator_login_password
@@ -99,15 +106,20 @@ resource "azurerm_synapse_firewall_rule" "default" {
   end_ip_address       = each.value.end_ip_address
 }
 
-# "Reader" on Storage account and "Storage Blob Data Owner" on container is an alternative
+/*
+Assigns permission on provided Storage account to the Synapse Workspace System Managed Identity
+"Reader" on Storage account and "Storage Blob Data Owner" on container is an alternative
+*/
 resource "azurerm_role_assignment" "default" {
-  count                = var.workspace.storage_data_lake_gen2_id != null && var.workspace.storage_data_lake_gen2_container_name != null ? 1 : 0
-  scope                = var.workspace.storage_data_lake_gen2_id
+  scope                = var.workspace.storage_account_id
   role_definition_name = "Storage Blob Data Contributor"
   principal_id         = azurerm_synapse_workspace.default.identity[0].principal_id
 }
 
-#Synapse Access Control
+/*
+Synapse Access Control
+Creating a list with role name and principal id
+*/
 locals {
   access_control = flatten([for key, value in var.workspace.access_control : [
     for principal_id in value : {
@@ -125,7 +137,7 @@ resource "azurerm_synapse_role_assignment" "roles" {
   principal_id         = each.value.principal_id
 }
 
-#Azure AD only
+# Azure AD only
 resource "azapi_update_resource" "synapse_azuread_only_authentication" {
   type      = "Microsoft.Synapse/workspaces/azureADOnlyAuthentications@2021-06-01"
   name      = "default"
@@ -137,6 +149,7 @@ resource "azapi_update_resource" "synapse_azuread_only_authentication" {
   })
 }
 
+# Trusted service bypass, but unfortunately it is not working ;(
 # resource "azapi_update_resource" "synapse_trusted_service_bypass_enabled" {
 #   count     = var.workspace.trusted_service_bypass_enabled ? 1 : 0
 #   type      = "Microsoft.Synapse/workspaces/trustedServiceByPassConfiguration@2021-06-01-preview"
@@ -164,7 +177,10 @@ resource "azapi_update_resource" "synapse_azuread_only_authentication" {
 #   })
 # }
 
-#Integration Runtime
+###########
+# Integration Runtime
+###########
+
 resource "azurerm_synapse_integration_runtime_self_hosted" "default" {
   for_each             = { for key, value in var.irs : key => value if value.type == "Self-hosted" }
   name                 = "${each.key}-synirsh"
@@ -183,7 +199,9 @@ resource "azurerm_synapse_integration_runtime_azure" "default" {
   time_to_live_min     = each.value.time_to_live_min
 }
 
-# Pools
+###########
+# SQL and Spark Pools
+###########
 resource "azurerm_synapse_sql_pool" "default" {
   for_each                  = { for key, value in var.sql_pools : key => value }
   name                      = "${each.key}syndp"
@@ -197,45 +215,73 @@ resource "azurerm_synapse_sql_pool" "default" {
   tags                      = merge(local.tags, each.value.tags)
 }
 
+###########
+# Create and approve managed private endpoint for Storage Account if storage_account_private_endpoint is set to true
+###########
 
 /*
 Managed private endpoint
 Unfortunately azurerm_synapse_managed_private_endpoint doesn't have the option to auto approve the private endpoint and it doesn't export the private endpoint name
-We used azapi_resource to retrieve private connections on Storage Account that match with private endpoint name created
+We used azapi_resource to get private connections on Storage Account that match with private endpoint name created
 */
 resource "azurerm_synapse_managed_private_endpoint" "default" {
   depends_on           = [azurerm_synapse_firewall_rule.default]
-  count                = var.workspace.storage_data_lake_gen2_private_endpoint ? 1 : 0
-  name                 = "${split("/", var.workspace.storage_data_lake_gen2_id)[8]}-synmpe"
+  count                = var.workspace.storage_account_private_endpoint ? 1 : 0
+  name                 = "${split("/", var.workspace.storage_account_id)[8]}-synmpe"
   synapse_workspace_id = azurerm_synapse_workspace.default.id
-  target_resource_id   = var.workspace.storage_data_lake_gen2_id
+  target_resource_id   = var.workspace.storage_account_id
   subresource_name     = "blob"
 }
 
 data "azapi_resource" "storage_account_private_endpoint_approval" {
   depends_on             = [azurerm_synapse_managed_private_endpoint.default]
-  resource_id            = var.workspace.storage_data_lake_gen2_id
+  resource_id            = var.workspace.storage_account_id
   type                   = "Microsoft.Storage/storageAccounts@2022-09-01"
   response_export_values = ["properties.privateEndpointConnections"]
 }
 
 locals {
-  private_endpoint_name = [for object in jsondecode(data.azapi_resource.storage_account_private_endpoint_approval.output).properties.privateEndpointConnections : object.name if strcontains(object.properties.privateEndpoint.id, "${azurerm_synapse_workspace.default.name}.${split("/", var.workspace.storage_data_lake_gen2_id)[8]}-synmpe")]
+  private_endpoint_name = [for object in jsondecode(data.azapi_resource.storage_account_private_endpoint_approval.output).properties.privateEndpointConnections : object.name if strcontains(object.properties.privateEndpoint.id, "${azurerm_synapse_workspace.default.name}.${split("/", var.workspace.storage_account_id)[8]}-synmpe")]
 }
 
 resource "azapi_update_resource" "storage_account_private_endpoint_approval" {
-  count     = var.workspace.storage_data_lake_gen2_private_endpoint ? 1 : 0
-  type      = "Microsoft.Storage/storageAccounts/privateEndpointConnections@2022-09-01"
-  name      = local.private_endpoint_name[0]
-  parent_id = var.workspace.storage_data_lake_gen2_id
+  depends_on = [azurerm_synapse_managed_private_endpoint.default]
+  count      = var.workspace.storage_account_private_endpoint ? 1 : 0
+  type       = "Microsoft.Storage/storageAccounts/privateEndpointConnections@2022-09-01"
+  name       = local.private_endpoint_name[0]
+  parent_id  = var.workspace.storage_account_id
 
   body = jsonencode({
     properties = {
       privateEndpoint = {}
       privateLinkServiceConnectionState = {
-        description = "Synapse Managed Endpoint"
+        description = "Synapse Managed Network Endpoint"
         status      = "Approved"
       }
     }
   })
 }
+
+###########
+# Create private endpoints for dev, sql and sql-ondemand
+###########
+
+# resource "azurerm_private_endpoint" "default" {
+#   for_each            = { for key, value in local.private_dns_zone_details : key => value }
+#   name                = "${local.full_stack_prefix}-${each.key}-pvte"
+#   location            = azurerm_resource_group.default.location
+#   resource_group_name = azurerm_resource_group.default.name
+#   subnet_id           = var.private_endpoint_subnet_id
+
+#   private_service_connection {
+#     name                           = "${local.full_stack_prefix}-${each.key}-conn"
+#     private_connection_resource_id = each.value.private_connection_resource_id
+#     subresource_names              = each.value.subresource_names
+#     is_manual_connection           = false
+#   }
+
+#   private_dns_zone_group {
+#     name                 = "default"
+#     private_dns_zone_ids = each.value.private_dns_zone_ids
+#   }
+# }
