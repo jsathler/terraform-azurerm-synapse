@@ -241,7 +241,7 @@ data "azapi_resource" "storage_account_private_endpoint_approval" {
 }
 
 locals {
-  private_endpoint_name = [for object in jsondecode(data.azapi_resource.storage_account_private_endpoint_approval.output).properties.privateEndpointConnections : object.name if strcontains(object.properties.privateEndpoint.id, "${azurerm_synapse_workspace.default.name}.${split("/", var.workspace.storage_account_id)[8]}-synmpe")]
+  private_endpoint_name = [for object in jsondecode(data.azapi_resource.storage_account_private_endpoint_approval.output).properties.privateEndpointConnections : object.name if strcontains(object.properties.privateEndpoint.id, "${azurerm_synapse_workspace.default.name}.${split("/", var.workspace.storage_account_id)[8]}-synmpep")]
 }
 
 resource "azapi_update_resource" "storage_account_private_endpoint_approval" {
