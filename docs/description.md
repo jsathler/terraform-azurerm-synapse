@@ -1,6 +1,6 @@
-# Azure Recovery Services Vault Terraform module
+# Azure Synapse Terraform module
 
-Terraform module which creates Azure Recovery Services Vault resources on Azure.
+Terraform module which creates Azure Synapse resources on Azure.
 
 Supported Azure services:
 

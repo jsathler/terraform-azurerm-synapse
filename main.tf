@@ -121,12 +121,12 @@ Synapse Access Control
 Creating a list with role name and principal id
 */
 locals {
-  access_control = flatten([for key, value in var.workspace.access_control : [
+  access_control = var.workspace.access_control == null ? [] : flatten([for key, value in var.workspace.access_control : [
     for principal_id in value : {
       role_name    = key
       principal_id = principal_id
     }
-  ] if var.workspace.access_control != null])
+  ]])
 }
 
 resource "azurerm_synapse_role_assignment" "roles" {
@@ -227,7 +227,7 @@ We used azapi_resource to get private connections on Storage Account that match 
 resource "azurerm_synapse_managed_private_endpoint" "default" {
   depends_on           = [azurerm_synapse_firewall_rule.default]
   count                = var.workspace.storage_account_private_endpoint ? 1 : 0
-  name                 = "${split("/", var.workspace.storage_account_id)[8]}-synmpe"
+  name                 = "${split("/", var.workspace.storage_account_id)[8]}-synmpep"
   synapse_workspace_id = azurerm_synapse_workspace.default.id
   target_resource_id   = var.workspace.storage_account_id
   subresource_name     = "blob"

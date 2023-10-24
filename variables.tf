@@ -23,7 +23,7 @@ variable "workspace" {
     storage_account_private_endpoint     = optional(bool, false)
     storage_account_filesystem_id        = optional(string, null)
     sql_identity_control_enabled         = optional(bool, true)
-    sql_administrator_login              = optional(string, "sqladminuser")
+    sql_administrator_login              = optional(string, "localadmin")
     sql_administrator_login_password     = optional(string, null)
     compute_subnet_id                    = optional(string, null)
     data_exfiltration_protection_enabled = optional(bool, true)
@@ -107,13 +107,13 @@ variable "firewall_rules" {
   nullable = false
 }
 
-variable "access_control" {
-  type = map(list(string))
+# variable "access_control" {
+#   type = map(list(string))
 
-  default = {}
+#   default = {}
 
-  nullable = false
-}
+#   nullable = false
+# }
 
 variable "sql_pools" {
   type = map(object({
