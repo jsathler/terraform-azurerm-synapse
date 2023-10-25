@@ -235,6 +235,7 @@ resource "azurerm_synapse_managed_private_endpoint" "default" {
 
 data "azapi_resource" "storage_account_private_endpoint_approval" {
   depends_on             = [azurerm_synapse_managed_private_endpoint.default]
+  count                  = var.workspace.storage_account_private_endpoint ? 1 : 0
   resource_id            = var.workspace.storage_account_id
   type                   = "Microsoft.Storage/storageAccounts@2022-09-01"
   response_export_values = ["properties.privateEndpointConnections"]
@@ -266,22 +267,21 @@ resource "azapi_update_resource" "storage_account_private_endpoint_approval" {
 # Create private endpoints for dev, sql and sql-ondemand
 ###########
 
-# resource "azurerm_private_endpoint" "default" {
-#   for_each            = { for key, value in local.private_dns_zone_details : key => value }
-#   name                = "${local.full_stack_prefix}-${each.key}-pvte"
-#   location            = azurerm_resource_group.default.location
-#   resource_group_name = azurerm_resource_group.default.name
-#   subnet_id           = var.private_endpoint_subnet_id
+module "private-endpoint" {
+  for_each            = var.private_endpoints == null ? {} : { for key, value in var.private_endpoints : key => value }
+  source              = "jsathler/private-endpoint/azurerm"
+  version             = "0.0.1"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  name_sufix_append   = var.name_sufix_append
+  tags                = local.tags
 
-#   private_service_connection {
-#     name                           = "${local.full_stack_prefix}-${each.key}-conn"
-#     private_connection_resource_id = each.value.private_connection_resource_id
-#     subresource_names              = each.value.subresource_names
-#     is_manual_connection           = false
-#   }
-
-#   private_dns_zone_group {
-#     name                 = "default"
-#     private_dns_zone_ids = each.value.private_dns_zone_ids
-#   }
-# }
+  private_endpoint = {
+    name                           = each.value.name
+    subnet_id                      = each.value.subnet_id
+    private_connection_resource_id = azurerm_synapse_workspace.default.id
+    subresource_name               = each.key
+    application_security_group_ids = each.value.application_security_group_ids
+    private_dns_zone_id            = each.value.private_dns_zone_id
+  }
+}

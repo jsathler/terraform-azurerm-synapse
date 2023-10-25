@@ -15,6 +15,13 @@ variable "tags" {
   default     = null
 }
 
+variable "name_sufix_append" {
+  description = "Define if all resources names should be appended with sufixes according to https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-abbreviations."
+  type        = bool
+  default     = true
+  nullable    = false
+}
+
 variable "workspace" {
   type = object({
     name                                 = string
@@ -150,4 +157,15 @@ variable "irs" {
     condition     = var.irs != null ? alltrue([for ir in var.irs : can(index(["General", "ComputeOptimized", "MemoryOptimized"], ir.compute_type) >= 0)]) : true
     error_message = "Allowed values for compute_type are General, ComputeOptimized and MemoryOptimized"
   }
+}
+
+variable "private_endpoints" {
+  type = map(object({
+    name                           = string
+    subnet_id                      = string
+    application_security_group_ids = optional(list(string))
+    private_dns_zone_id            = string
+  }))
+
+  default = null
 }
